@@ -43,12 +43,12 @@ def h_clustering(dim, k, points, dist, clusts=[]):
             if best_index > 0:
                 c.extend(clusts[best_index])
                 clusts[best_index] = None
-        #clusts = [c for c in clusts if c]  # reference reassignment
-        temp = [c for c in clusts if c]
-        clusts.clear()
-        for c in temp:
-            if c:
-                clusts.append(c)
+            #clusts = [c for c in clusts if c]  # reference reassignment
+            temp = [c for c in clusts if c]
+            clusts.clear()
+            for c in temp:
+                if c:
+                    clusts.append(c)
 
 
 if __name__ == '__main__':
