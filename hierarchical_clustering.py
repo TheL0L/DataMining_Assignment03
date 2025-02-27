@@ -26,6 +26,7 @@ def h_clustering(dim, k, points, dist, clusts=[]):
 
     # HAC algorithm, each point starts in it own cluster
     #clusts = [[p] for p in points]  # reference reassignment
+    clusts.clear()  # clearing old values, just in case the function is reused during tests...
     for p in points:
         clusts.append([p])
 
