@@ -1,3 +1,4 @@
+from math import log
 
 def h_clustering(dim, k, points, dist, clusts=[]):
     """
@@ -18,6 +19,8 @@ def h_clustering(dim, k, points, dist, clusts=[]):
         raise ValueError('K must be between 1 and len(points).')
     if dist is None:
         dist = lambda p, q: sum([(p[i] - q[i])**2 for i in range(dim)])
+    if k is None or k < 1:
+        k = int(log(len(points)))
     
     def similarity(cluster1, cluster2):
         """Calculate the similarity of two clusters."""
