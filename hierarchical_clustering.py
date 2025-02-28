@@ -24,7 +24,7 @@ def h_clustering(dim, k, points, dist, clusts=[]):
     
     def similarity(cluster1, cluster2):
         """Calculate the similarity of two clusters."""
-        get_centroid = lambda c: tuple(sum(axis) for axis in zip(*c))
+        get_centroid = lambda c: tuple(sum(axis)/len(c) for axis in zip(*c))
         return dist(get_centroid(cluster1), get_centroid(cluster2))
 
     # HAC algorithm, each point starts in it own cluster
