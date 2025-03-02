@@ -15,12 +15,11 @@ def h_clustering(dim, k, points, dist, clusts=[]):
         return
     if dim < 1:
         raise ValueError('Dimension must be greater than zero.')
-    if not (0 < k < len(points)):
-        raise ValueError('K must be between 1 and len(points).')
     if dist is None:
         dist = lambda p, q: sum([(p[i] - q[i])**2 for i in range(dim)])
     if k is None or k < 1:
         k = int(log(len(points)))
+    k = min(k, len(points))
     
     def similarity(cluster1, cluster2):
         """Calculate the similarity of two clusters."""
