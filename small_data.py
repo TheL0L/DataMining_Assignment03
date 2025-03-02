@@ -25,6 +25,11 @@ def generate_data(dim, k, n, out_path, points_gen=None, extras={}):
     
     return centroids, points
 
+def read_single_point(point_row, dim = None):
+    point = [float(axis) for axis in point_row]
+    dim = len(point) if dim is None else max(1, min(dim, len(point)))
+    return tuple(point[:dim])
+
 def load_points(in_path, n=-1, points=[]):
     """
     Loads N points from a CSV file.
@@ -39,10 +44,7 @@ def load_points(in_path, n=-1, points=[]):
         for row in reader:
             if n == 0:
                 break
-            point = []
-            for axis in row:
-                point.append(int(axis))
-            points.append(tuple(point))
+            points.append(read_single_point(row))
             n -= 1
 
 def save_points(clusts, out_path, out_path_tagged):
@@ -70,4 +72,3 @@ def save_points(clusts, out_path, out_path_tagged):
 
 if __name__ == '__main__':
     ...
-
