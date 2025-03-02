@@ -41,7 +41,7 @@ def load_points(in_path, n=-1, points=[]):
                 break
             point = []
             for axis in row:
-                point.append(int(axis))
+                point.append(float(axis))
             points.append(tuple(point))
             n -= 1
 
