@@ -16,6 +16,7 @@ def k_means(dim: int, k: int|None, n: int, points: list[tuple[float]], clusts=[]
 
     if k is None:
         k = find_optimal_k(dim, points, range(1, 6))
+    k = max(1, min(k, n))  # bound k in [1, n]
 
     points_list = [list(p) for p in points]
 
