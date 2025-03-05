@@ -1,7 +1,13 @@
 import math
 import random
 
-def k_means(dim: int, k: int|None, n: int, points: list[tuple[float]], clusts=[]) -> None:
+from cluster import Cluster
+from utils import euclidean_distance
+
+MAX_ITERATIONS = 100
+
+
+def k_means(dim: int, k: int|None, n: int, points: list[tuple[float, ...]], clusts=[]) -> None:
     """
     Perform k-means clustering on a set of n-dimensional points.
 
@@ -20,61 +26,32 @@ def k_means(dim: int, k: int|None, n: int, points: list[tuple[float]], clusts=[]
 
     points_list = [list(p) for p in points]
 
-    centroids = random.sample(points_list, k)
+    # Randomly assign points to k clusters initially
+    init_clusters = [[] for _ in range(k)]
+    for p in points_list:
+        init_clusters[random.randrange(k)].append(p)
 
-    def distance(point1, point2):
-        return math.sqrt(sum((point1[i] - point2[i])**2 for i in range(dim)))
+    for i in range(k):
+        if not init_clusters[i]:
+            init_clusters[i].append(random.choice(points_list))
 
+    cluster_objs = [Cluster(cluster) for cluster in init_clusters]
 
-    for _iter in range(n):
+    for _ in range(MAX_ITERATIONS):
         new_clusters = [[] for _ in range(k)]
-
         for p in points_list:
-            min_dist = float('inf')
-            min_idx = 0
-            for i, c in enumerate(centroids):
-                d = distance(p, c)
-                if d < min_dist:
-                    min_dist = d
-                    min_idx = i
-            new_clusters[min_idx].append(p)
+            distances = [euclidean_distance(p, cluster.centroid) for cluster in cluster_objs]
+            min_index = distances.index(min(distances))
+            new_clusters[min_index].append(p)
+        changed = any(sorted(new_clusters[i]) != sorted(cluster_objs[i].points) for i in range(k))
+        if not changed:
+            break
+        for i in range(k):
+            if not new_clusters[i]:
+                new_clusters[i].append(random.choice(points_list))
+        cluster_objs = [Cluster(cluster) for cluster in new_clusters]
 
-        if _iter > 0:  
-            same = True
-            prev_sorted = sorted([sorted(cluster) for cluster in clusts], key=len)
-            new_sorted = sorted([sorted(cluster) for cluster in new_clusters], key=len)
-            
-            
-            if len(prev_sorted) == len(new_sorted):
-                for old_cl, new_cl in zip(prev_sorted, new_sorted):
-                    if old_cl != new_cl:
-                        same = False
-                        break
-            else:
-                same = False
-
-            if same:
-                clusts = new_clusters
-                break
-
-        new_centroids = []
-        for cluster in new_clusters:
-            if len(cluster) > 0:
-                c_sum = [0.0]*dim
-                for p in cluster:
-                    for i in range(dim):
-                        c_sum[i] += p[i]
-                for i in range(dim):
-                    c_sum[i] /= len(cluster)
-                new_centroids.append(c_sum)
-            else:
-                new_centroids.append(random.choice(points_list))
-
-        centroids = new_centroids
-
-        clusts.clear()
-        for cluster in new_clusters:
-            clusts.append(cluster)
+    clusts.extend([cluster.points for cluster in cluster_objs])
 
 
 def find_optimal_k(dim: int, points: list[tuple[float]], k_values: range) -> None:
