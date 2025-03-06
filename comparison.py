@@ -5,7 +5,12 @@ from bfr import bfr_cluster, bfr_cleanup
 from cure import cure_cluster
 
 from random import seed
-import hashlib, os
+import hashlib, os, csv
+from small_data import read_single_point
+from typing import List, Tuple
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+
 
 def get_file_sha256(file_path: str) -> str:
     sha256_hash = hashlib.sha256()
@@ -94,9 +99,89 @@ def generate_large_data_files():
     return file_names
 
 
+def construct_clustering(file_path: str) -> List[List[Tuple[float, ...]]]:
+    """
+    Strong assumption: there is enough memory to construct the clustering.
+    """
+    clusters = dict()
+    input_handler = open(file_path, 'r')
+    reader = csv.reader(input_handler)
+
+    for row in reader:
+        point = read_single_point(row)
+        k = int(point[-1])
+        point = tuple(point[:-1])
+
+        if k not in clusters:
+            clusters[k] = []
+        clusters[k].append(point)
+
+    input_handler.close()
+    return list(clusters.values())
+
+def compare_clusterings(
+        actual: List[List[Tuple[float, ...]]],
+        predicted: List[List[Tuple[float, ...]]]) -> float:
+    """
+    Compare two clusterings based on how similar `predicted` is to `actual`.
+
+    This function constructs a contingency table for the clusters by mapping each point
+    to its cluster label (using the index of the cluster in the list) for both the actual
+    and predicted clusterings. It then uses the Hungarian algorithm to find the optimal
+    one-to-one mapping between the clusters. The clustering accuracy is computed as the
+    sum of counts along the optimally matched clusters divided by the total number of points.
+    """
+    # Map each point to its cluster label for both clusterings.
+    actual_label = {}
+    for cluster_idx, cluster in enumerate(actual):
+        for point in cluster:
+            actual_label[point] = cluster_idx
+
+    predicted_label = {}
+    for cluster_idx, cluster in enumerate(predicted):
+        for point in cluster:
+            predicted_label[point] = cluster_idx
+
+    # Consider only the common points in both clusterings.
+    all_points = set(actual_label.keys()) & set(predicted_label.keys())
+    total_points = len(all_points)
+    if total_points == 0:
+        return 0.0
+
+    # Get sorted lists of unique cluster labels.
+    actual_clusters = sorted({actual_label[p] for p in all_points})
+    predicted_clusters = sorted({predicted_label[p] for p in all_points})
+    n_actual = len(actual_clusters)
+    n_predicted = len(predicted_clusters)
+
+    # Map the cluster labels to indices in our contingency matrix.
+    actual_index = {cluster: i for i, cluster in enumerate(actual_clusters)}
+    predicted_index = {cluster: j for j, cluster in enumerate(predicted_clusters)}
+
+    # Build the contingency matrix.
+    contingency = np.zeros((n_actual, n_predicted), dtype=int)
+    for point in all_points:
+        i = actual_index[actual_label[point]]
+        j = predicted_index[predicted_label[point]]
+        contingency[i, j] += 1
+
+    # Use the Hungarian algorithm (via linear_sum_assignment) to find the optimal cluster matching.
+    # We negate the contingency matrix to convert our maximization problem into a minimization problem.
+    row_ind, col_ind = linear_sum_assignment(-contingency)
+    matched_count = contingency[row_ind, col_ind].sum()
+
+    # Calculate and return the accuracy.
+    accuracy = matched_count / total_points
+    return accuracy
+
+
 if __name__ == '__main__':
     seed('big data')  # initialize the rng seed for reproducibility
 
     small_files = generate_small_data_files()
     large_files = generate_large_data_files()
+
+    # ☐ show heuristic/metric for a range of k values for small_data.algs
+    # ☑ show clustering accuracy for small_data.algs
+    # ☑ show clustering accuracy for large_data.algs
 
