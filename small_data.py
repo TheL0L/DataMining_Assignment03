@@ -33,12 +33,13 @@ def read_single_point(point_row, dim = None):
     dim = len(point) if dim is None else max(1, min(dim, len(point)))
     return tuple(point[:dim])
 
-def load_points(in_path, n=-1, points=[]):
+def load_points(in_path, dim, n=-1, points=[]):
     """
     Loads N points from a CSV file.
 
     Args:
         in_path - path for CSV file containing the points
+        dim - points dimension
         n (default=-1) - amount of points to load, if -1, then load all available
         points (default=[]) - output list of points
     """
@@ -47,7 +48,7 @@ def load_points(in_path, n=-1, points=[]):
         for row in reader:
             if n == 0:
                 break
-            points.append(read_single_point(row))
+            points.append(read_single_point(row, dim))
             n -= 1
 
 def save_points(clusts, out_path, out_path_tagged):
