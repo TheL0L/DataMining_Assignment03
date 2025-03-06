@@ -1,4 +1,5 @@
 import csv, random
+from typing import List, Tuple
 
 __MEMORY_USAGE_LIMIT = 256 * 1024**2  # 256MB
 __PYTHON_FLOAT_SIZE = 8  # 8 Bytes
@@ -46,6 +47,23 @@ def generate_data(dim, k, n, out_path, points_gen=None, extras={}):
     
     return centroids
 
+def save_points(clusters: List[List[Tuple[float, ...]]], output_path: str) -> None:
+    """
+    Write clustered points into a file in the following format:
+        row: `axis1, axis2, ..., axisN, clusterID`
+    
+    Args:
+        clusters - list of clusters
+        output_path - output file path
+    """
+    output_handler = open(output_path, 'w', newline='')
+    writer = csv.writer(output_handler)
+
+    for k, cluster in enumerate(clusters):
+        for point in cluster:
+            writer.writerow([*point, k])
+
+    output_handler.close()
 
 if __name__ == '__main__':
     ...
