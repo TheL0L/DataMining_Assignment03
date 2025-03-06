@@ -149,7 +149,53 @@ def bfr_cluster(dim, k, n, block_size, in_path, out_path):
     print(f'|DS|={len(_bfr_clusters)}    |CS|={len(_bfr_miniclusters)}    |RS|={len(_bfr_retained)}')
     print(f'DS: {[c.n for c in _bfr_clusters]}')
     print(f'CS: {[c.n for c in _bfr_miniclusters]}')
+
+    # map each CS to the closest DS
+    dist = lambda p, q: sum([(p[i] - q[i])**2 for i in range(dim)])
+    full_ids = [c.index for c in _bfr_clusters]
+    mini_ids = [c.index for c in _bfr_miniclusters]
+    for minicluster in _bfr_miniclusters:
+        centroid = minicluster.get_centroid()
+        best_d = float('inf')
+        best_index = -1
+        for cluster in _bfr_clusters:
+            d = dist(centroid, cluster.get_centroid())
+            if d < best_d:
+                best_d = d
+                best_index = cluster.index
+        
+        cluster_index_mapping[minicluster.index] = best_index
+    
+    # collapse (flatten) the mapping
+    cluster_index_mapping = collapse_mapping(cluster_index_mapping)
     print(f'\nmapping:\n{cluster_index_mapping}')
+
+    # close file handles and return mapping for cleanup
+    input_handler.close()
+    output_handler.close()
+    return cluster_index_mapping
+
+
+def collapse_mapping(mapping: dict[int, int]) -> dict[int, int]:
+    collapsed = {}
+    for swapped in mapping:
+        current = swapped
+        while current in mapping and current != mapping[current]:
+            current = mapping[current]
+        collapsed[swapped] = current
+    return collapsed
+
+
+def bfr_cleanup(input_path: str, output_path: str, mapping: dict[int, int]) -> None:
+    input_handler = open(input_path, 'r')
+    output_handler = open(output_path, 'w', newline='')
+    reader = csv.reader(input_handler)
+    writer = csv.writer(output_handler)
+
+    for line in reader:
+        axis, cluster = line[:-1], int(line[-1])
+        new_line = [*axis, mapping[cluster] if cluster in mapping else cluster]
+        writer.writerow(new_line)
 
     input_handler.close()
     output_handler.close()
