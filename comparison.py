@@ -25,7 +25,7 @@ def verify_file(file_path: str, expected_hash: str) -> bool:
     file_hash = get_file_sha256(file_path)
     return file_hash == expected_hash.lower()
 
-def generate_small_data_files():
+def generate_small_data_files() -> List[str]:
     # file 1 requirements: dim=2 k>=5 n≈1000
     # file 2 requirements: dim>3 k>4 dim+k>=10
     file_names = [
@@ -71,7 +71,7 @@ def generate_small_data_files():
 
     return file_names
 
-def generate_large_data_files():
+def generate_large_data_files() -> List[str]:
     # file 1,2 requirements: at least 10GB, dim>5 k>5
     file_names = [
         './data/large_1.csv',
