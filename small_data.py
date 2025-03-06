@@ -13,11 +13,14 @@ def generate_data(dim, k, n, out_path, points_gen=None, extras={}):
     def generate_random_centroid():
         return tuple([random.uniform(-100, 100) for i in range(dim)])
 
-    def generate_random_point(offset):
-        return tuple([offset[i] + random.uniform(-10, 10) for i in range(dim)])
+    def generate_random_point(offset, j):
+        return tuple([offset[i] + random.uniform(-10, 10) for i in range(dim)] + [j])
 
     centroids = [generate_random_centroid() for _ in range(k)]
-    points = [generate_random_point(random.choice(centroids)) for _ in range(n)]
+    points = []
+    for _ in range(n):
+        j = random.randint(0, k - 1)
+        points.append(generate_random_point(centroids[j], j))
 
     with open(out_path, 'w', newline='') as file:
         writer = csv.writer(file)
