@@ -16,8 +16,8 @@ def generate_data(dim, k, n, out_path, points_gen=None, extras={}):
     def generate_random_centroid():
         return tuple([random.uniform(-100, 100) for i in range(dim)])
 
-    def generate_random_point(offset):
-        return tuple([offset[i] + random.uniform(-10, 10) for i in range(dim)])
+    def generate_random_point(offset, j):
+        return tuple([offset[i] + random.uniform(-10, 10) for i in range(dim)] + [j])
 
     # calculate batch size based on expected float size and dimentionality.
     BATCH_SIZE = __MEMORY_USAGE_LIMIT // (dim * __PYTHON_FLOAT_SIZE)
@@ -36,11 +36,11 @@ def generate_data(dim, k, n, out_path, points_gen=None, extras={}):
         while points_written < n:
             print(f'Progress: {points_written} / {n}')
             
-            batch = [
-                generate_random_point(random.choice(centroids))
-                for _ in range(min(BATCH_SIZE, n - points_written))
-            ]
-
+            batch = []
+            for _ in range(min(BATCH_SIZE, n - points_written)):
+                j = random.randint(0, k - 1)
+                batch.append(generate_random_point(centroids[j], j))
+            
             writer.writerows(batch)
             points_written += len(batch)
     
