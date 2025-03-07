@@ -1,4 +1,5 @@
 from math import log
+from metrics import euclidean_distance
 
 def h_clustering(dim, k, points, dist, clusts=[]):
     """
@@ -16,7 +17,7 @@ def h_clustering(dim, k, points, dist, clusts=[]):
     if dim < 1:
         raise ValueError('Dimension must be greater than zero.')
     if dist is None:
-        dist = lambda p, q: sum([(p[i] - q[i])**2 for i in range(dim)])
+        dist = euclidean_distance
     if k is None or k < 1:
         k = int(log(len(points)))
     k = min(k, len(points))
@@ -27,8 +28,7 @@ def h_clustering(dim, k, points, dist, clusts=[]):
         return dist(get_centroid(cluster1), get_centroid(cluster2))
 
     # HAC algorithm, each point starts in it own cluster
-    #clusts = [[p] for p in points]  # reference reassignment
-    clusts.clear()  # clearing old values, just in case the function is reused during tests...
+    clusts.clear()
     for p in points:
         clusts.append([p])
 
@@ -46,7 +46,6 @@ def h_clustering(dim, k, points, dist, clusts=[]):
             if best_index > 0:
                 c.extend(clusts[best_index])
                 clusts[best_index] = None
-            #clusts = [c for c in clusts if c]  # reference reassignment
             temp = [c for c in clusts if c]
             clusts.clear()
             for c in temp:

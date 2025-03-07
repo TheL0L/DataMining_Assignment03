@@ -1,6 +1,7 @@
 import csv, math
 from small_data import read_single_point
 from k_means import k_means
+from metrics import euclidean_distance
 
 class _BFR_Cluster:
     index = 0
@@ -151,15 +152,12 @@ def bfr_cluster(dim, k, n, block_size, in_path, out_path):
     print(f'CS: {[c.n for c in _bfr_miniclusters]}')
 
     # map each CS to the closest DS
-    dist = lambda p, q: sum([(p[i] - q[i])**2 for i in range(dim)])
-    full_ids = [c.index for c in _bfr_clusters]
-    mini_ids = [c.index for c in _bfr_miniclusters]
     for minicluster in _bfr_miniclusters:
         centroid = minicluster.get_centroid()
         best_d = float('inf')
         best_index = -1
         for cluster in _bfr_clusters:
-            d = dist(centroid, cluster.get_centroid())
+            d = euclidean_distance(centroid, cluster.get_centroid())
             if d < best_d:
                 best_d = d
                 best_index = cluster.index
