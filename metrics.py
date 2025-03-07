@@ -31,6 +31,9 @@ def silhouette_score(clusters: List[Cluster]) -> float:
 
     if num_points <= 1:
         return 0  # Silhouette score is undefined for a single point
+    
+    if len(clusters) == 1:
+        return 0  # Silhouette score is undefined for a single cluster
 
     for cluster in clusters:
         for point in cluster:
