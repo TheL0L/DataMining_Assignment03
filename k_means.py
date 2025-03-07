@@ -1,8 +1,7 @@
-import math
-import random
-
 from cluster import Cluster
-from utils import euclidean_distance
+from metrics import euclidean_distance, get_k_upper_bound, silhouette_score
+from metrics import Point
+import random
 
 MAX_ITERATIONS = 100
 
@@ -21,7 +20,7 @@ def k_means(dim: int, k: int|None, n: int, points: list[tuple[float, ...]], clus
     clusts.clear()
 
     if k is None:
-        k = find_optimal_k(dim, points, range(1, 6))
+        k = get_best_k(dim, points)
     k = max(1, min(k, n))  # bound k in [1, n]
 
     points_list = [list(p) for p in points]
@@ -53,6 +52,18 @@ def k_means(dim: int, k: int|None, n: int, points: list[tuple[float, ...]], clus
 
     clusts.extend([cluster.points for cluster in cluster_objs])
 
+def get_best_k(dim: int, points: list[Point]) -> int:
+    if len(points) < 2:
+        return 1
+    scores = dict()
+    n = len(points)
+    k_upper_bound = get_k_upper_bound(n)
+    for k in range(2, k_upper_bound):
+        clusters = []
+        k_means(dim, k, n, points, clusters)
+        scores[k] = silhouette_score(clusters)
+
+    return max(scores, key=scores.get)
 
 def find_optimal_k(dim: int, points: list[tuple[float]], k_values: range) -> None:
     """
