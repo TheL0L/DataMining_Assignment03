@@ -1,6 +1,5 @@
-from metrics import euclidean_distance, silhouette_score
+from metrics import euclidean_distance, get_k_upper_bound, silhouette_score
 from metrics import Point
-from math import sqrt
 import heapq
 
 def h_clustering(dim, k, points, dist, clusts=[]):
@@ -86,8 +85,8 @@ def get_best_k(dim: int, points: list[Point]) -> int:
     if len(points) < 2:
         return 1
     scores = dict()
-    k_upper_bound = sqrt(len(points))
-    for k in range(2, int(k_upper_bound)):
+    k_upper_bound = get_k_upper_bound(len(points))
+    for k in range(2, k_upper_bound):
         clusters = []
         h_clustering(dim, k, points, euclidean_distance, clusters)
         scores[k] = silhouette_score(clusters)

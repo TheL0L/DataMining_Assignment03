@@ -43,3 +43,6 @@ def silhouette_score(clusters: List[Cluster]) -> float:
             total_score += s
 
     return total_score / num_points  # Average over all points
+
+def get_k_upper_bound(points_count: int) -> int:
+    return int(math.ceil(math.sqrt(points_count)))
