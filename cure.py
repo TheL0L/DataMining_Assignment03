@@ -139,6 +139,8 @@ def cure_cluster(dim: int, k: int, n: int, block_size: int, in_path: str, out_pa
             index = min(distances, key=distances.get)
             # and write the point assignment to output
             writer.writerow([*point, index])
+        
+        points_clustered += len(batch)
 
     input_handler.close()
     output_handler.close()
