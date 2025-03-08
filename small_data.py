@@ -1,4 +1,6 @@
 import csv, random
+from typing import Tuple
+from metrics import Point
 
 def generate_data(dim, k, n, out_path, points_gen=None, extras={}):
     """
@@ -28,7 +30,7 @@ def generate_data(dim, k, n, out_path, points_gen=None, extras={}):
     
     return centroids, points
 
-def read_single_point(point_row, dim = None):
+def read_single_point(point_row: Tuple[str, ...], dim: int = None) -> Point:
     point = [float(axis) for axis in point_row]
     dim = len(point) if dim is None else max(1, min(dim, len(point)))
     return tuple(point[:dim])
