@@ -6,8 +6,11 @@ from cure import cure_cluster
 
 from random import seed
 import hashlib, os, csv
+from pathlib import Path
 from small_data import read_single_point
+from metrics import get_k_upper_bound, silhouette_score
 from typing import List, Tuple
+from metrics import Point, Cluster
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
@@ -36,9 +39,9 @@ def generate_small_data_files() -> List[str]:
     ]
     checksums = [
         '2E023461402672B9CD234242C87A8E3CD973243EE92090D906302A61B71C6E38',
-        '9E370A848B6A4DCAF9CDA692E901FCC031C83112BF2181655B6441BB1F62DBD4',
-        '45357C720FD3E818B3AE98171538EFA167E62C78132D189EBE9DDEA876A10C08',
-        '0CE683C251AFE737D032472C974DC6AA6E78511619D52EA851C519D0F4574178'
+        '',
+        '',
+        ''
     ]
 
     if not verify_file(file_names[0], checksums[0]):
@@ -50,21 +53,21 @@ def generate_small_data_files() -> List[str]:
 
     if not verify_file(file_names[1], checksums[1]):
         small_data.generate_data(
-            dim=5, k=10, n=10_000,
+            dim=5, k=10, n=1_000,
             out_path=file_names[1],
             points_gen=None, extras=None
         )
 
     if not verify_file(file_names[2], checksums[2]):
         small_data.generate_data(
-            dim=6, k=15, n=25_000,
+            dim=6, k=15, n=1_000,
             out_path=file_names[2],
             points_gen=None, extras=None
         )
 
     if not verify_file(file_names[3], checksums[3]):
         small_data.generate_data(
-            dim=10, k=20, n=50_000,
+            dim=10, k=20, n=1_000,
             out_path=file_names[3],
             points_gen=None, extras=None
         )
@@ -99,7 +102,7 @@ def generate_large_data_files() -> List[str]:
     return file_names
 
 
-def construct_clustering(file_path: str) -> List[List[Tuple[float, ...]]]:
+def construct_clustering(file_path: str) -> List[Cluster]:
     """
     Strong assumption: there is enough memory to construct the clustering.
     """
@@ -119,9 +122,7 @@ def construct_clustering(file_path: str) -> List[List[Tuple[float, ...]]]:
     input_handler.close()
     return list(clusters.values())
 
-def compare_clusterings(
-        actual: List[List[Tuple[float, ...]]],
-        predicted: List[List[Tuple[float, ...]]]) -> float:
+def compare_clusterings(actual: List[Cluster], predicted: List[Cluster]) -> float:
     """
     Compare two clusterings based on how similar `predicted` is to `actual`.
 
@@ -179,9 +180,79 @@ if __name__ == '__main__':
     seed('big data')  # initialize the rng seed for reproducibility
 
     small_files = generate_small_data_files()
-    large_files = generate_large_data_files()
+    # large_files = generate_large_data_files()
 
     # ☐ show heuristic/metric for a range of k values for small_data.algs
     # ☑ show clustering accuracy for small_data.algs
     # ☑ show clustering accuracy for large_data.algs
+
+
+    # dimension = 10
+    # known_k = 20
+    # N = 1_000
+
+    # file_name = 'small_2c'
+    # results_path = Path(f'./results/hac/{file_name}.csv')
+    # results_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # with open(results_path, 'w', newline='') as file_handle:
+    #     writer = csv.writer(file_handle)
+    #     writer.writerow(['k', 'score', 'accuracy'])
+
+    #     points = []
+    #     small_data.load_points(f'./data/{file_name}.csv', dimension, -1, points)
+        
+    #     for k in range(known_k-3, known_k+6):
+    #         clusters = []
+    #         hac(dimension, k, points, None, clusters)
+    #         large_data.save_points(clusters, f'./data/results/{file_name}_hac.csv')
+    #         score = silhouette_score(clusters)
+    #         actual_clusters = construct_clustering(f'./data/{file_name}.csv')
+    #         predicted_clusters = construct_clustering(f'./data/results/{file_name}_hac.csv')
+    #         acc = compare_clusterings(actual_clusters, predicted_clusters)
+    #         writer.writerow([k, score, acc])
+    #         print([k, score, acc])
+
+    N = 100_000
+    known_k = 50
+    dimension = 50
+
+    file_name = 'large_1a'
+    results_path = Path(f'./results/bfr/{file_name}.csv')
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # large_data.generate_data(dimension, known_k, N, f'./data/{file_name}.csv')
+    # exit()
+
+    with open(results_path, 'a', newline='') as file_handle:
+        writer = csv.writer(file_handle)
+        writer.writerow(['k', 'accuracy'])
+        
+        for k in range(known_k-3, known_k+6):
+            mapping = bfr_cluster(
+                dimension, known_k, N, 1_000,
+                f'./data/{file_name}.csv',
+                f'./data/results/{file_name}_bfr_temp.csv'
+            )
+            bfr_cleanup(f'./data/results/{file_name}_bfr_temp.csv', f'./data/results/{file_name}_bfr.csv', mapping)
+            
+            actual_clusters = construct_clustering(f'./data/{file_name}.csv')
+            predicted_clusters = construct_clustering(f'./data/results/{file_name}_bfr.csv')
+            acc = compare_clusterings(actual_clusters, predicted_clusters)
+            writer.writerow([k, acc])
+            print([k, acc])
+
+    # mapping = bfr_cluster(
+    #     75, 75, 10**7, 100_000,
+    #     './data/large_1.csv',
+    #     './data/results/large_1_bfr_temp.csv'
+    # )
+    # bfr_cleanup('./data/results/large_1_bfr_temp.csv', './data/results/large_1_bfr.csv', mapping)
+
+    # print('BFR Completed!')
+    # actual_clusters = construct_clustering('./data/large_1.csv')
+    # predicted_clusters = construct_clustering('./data/results/large_1_bfr.csv')
+
+    # acc = compare_clusterings(actual_clusters, predicted_clusters)
+    # print(acc)
 
