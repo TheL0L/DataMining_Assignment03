@@ -147,18 +147,4 @@ def cure_cluster(dim: int, k: int, n: int, block_size: int, in_path: str, out_pa
 
 
 if __name__ == '__main__':
-    import plot_util, large_data, comparison
-
-    large_data.generate_data(2, 5, 1000, './data/test_points.csv', None, None)
-    cure_cluster(
-        2, 5, 1000, 100, 
-        './data/test_points.csv',
-        './data/results/test_points_cure.csv'
-    )
-    plot_util.plot_from_storage_2d('./data/test_points.csv')
-    plot_util.plot_from_storage_2d('./data/results/test_points_cure.csv')
-
-    actual_clusters = comparison.construct_clustering('./data/test_points.csv')
-    predicted_clusters = comparison.construct_clustering('./data/results/test_points_cure.csv')
-    acc = comparison.compare_clusterings(actual_clusters, predicted_clusters)
-    print(f'{acc=}')
+    ...
