@@ -37,6 +37,9 @@ class _BFR_Cluster:
 
 
 def bfr_cluster(dim, k, n, block_size, in_path, out_path):
+    if dim < 1:
+        raise ValueError('Dimension must be greater than zero.')
+    
     input_handler = open(in_path, 'r')
     output_handler = open(out_path, 'w', newline='')
     reader = csv.reader(input_handler)
@@ -53,9 +56,6 @@ def bfr_cluster(dim, k, n, block_size, in_path, out_path):
                 break
         return batch
 
-    if dim < 1:
-        raise ValueError('Dimension must be greater than zero.')
-    
     # initialize clusters via running k-means
     initial_clusters = []
     batch = read_batch()
