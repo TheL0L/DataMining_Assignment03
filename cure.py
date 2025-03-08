@@ -1,82 +1,162 @@
-import csv
-from math import ceil
+import random, csv
+from small_data import read_single_point
+from hierarchical_clustering import h_clustering as hac
+from metrics import euclidean_distance
+from metrics import Point, Cluster
+from typing import List
 
-from cluster import Cluster
+_R = 10
+_ALPHA = 0.2
+_MERGE_THRESHOLD = 1.2
+
+class _CURE_Cluster:
+    index = 0
+    def __init__(self, points: List[Point]):
+        self.index = _CURE_Cluster.index
+        _CURE_Cluster.index += 1
+        self.n = len(points)
+        self.points = points.copy()
+        self.centroid = self.__compute_centroid()
+        self.radius = self.__compute_radius()
+        self.representatives = self.__select_representatives()
+    
+    def __compute_radius(self) -> float:
+        return max(euclidean_distance(self.centroid, p) for p in self.points)
+    
+    def __compute_centroid(self) -> Point:
+        return tuple(sum(axis) / self.n for axis in zip(*self.points))
+    
+    def __select_representatives(self):
+        reps_count = max(self.n, _R)
+        if reps_count < 1:
+            reps = []
+        else:
+            # start with a random point
+            reps = [random.choice(self.points)]
+            
+            while len(reps) < reps_count:
+                # find the point in the cluster that is farthest from the closest representative
+                farthest_point = max(
+                    self.points,
+                    key=lambda p: min(euclidean_distance(p, rep) for rep in reps)
+                )
+                reps.append(farthest_point)
+        
+        # shrink representatives
+        shrunk = []
+        for rep in reps:
+            new_point = tuple((1 - _ALPHA) * r + _ALPHA * c for r, c in zip(rep, self.centroid))
+            shrunk.append(new_point)
+        
+        return shrunk
+
+    def get_closest_distance(self, points: List[Point]) -> float:
+        """
+        return the closest possible distance between the points and the representatives.
+        """
+        best_overall = float('inf')
+        for rep in self.representatives:
+            min_distance = min(euclidean_distance(rep, p) for p in points)
+            if min_distance < best_overall:
+                best_overall = min_distance
+        return best_overall
 
 
-def cure_cluster_k(dim: int, k: int, n: int, block_size: int, in_path: str):
-    num_blocks = ceil(n / block_size)
-    clusters: list[Cluster] = []
+def reservoir_sample_points(file_path: str, sample_size: int, dim: int) -> List[Point]:
+    sample_points = []
+    count = 0
+    with open(file_path, 'r') as input_handler:
+        reader = csv.reader(input_handler)
+        for row in reader:
+            point = read_single_point(row, dim)
+            count += 1
+            if len(sample_points) < sample_size:
+                sample_points.append(point)
+            else:
+                # randomly replace an element in the reservoir with decreasing probability
+                r = random.randint(0, count - 1)
+                if r < sample_size:
+                    sample_points[r] = point
+    return sample_points
 
-    # Step 1: Read and process data in blocks
-    for block_idx in range(num_blocks):
-        with open(in_path, 'r', newline='') as file:
-            reader = csv.reader(file)
+def cure_cluster(dim: int, k: int, n: int, block_size: int, in_path: str, out_path: str) -> None:
+    """
+    this implementation will guarantee "at most k clusters".
+    couldn't think of a way to guarantee exactly k clusters in time,
+        as it is highly depended on many factors (merge_threshold for example).
+    """
+    if dim < 1:
+        raise ValueError('Dimension must be greater than zero.')
+    
+    # 1. make initial clustering based on a sample of the data
+    sample_points = reservoir_sample_points(in_path, block_size, dim)
+    clusters = []
+    hac(dim, k, sample_points, euclidean_distance, clusters)
+    clusters = [_CURE_Cluster(c) for c in clusters]  # convert to CURE format
 
-            block = []
-            for i, raw_row in enumerate(reader):
-                if i >= n:
-                    break
+    # 2. merge clusters based on representative proximity
+    for i, cluster in enumerate(clusters):
+        distance = float('inf')
+        closest_cluster = -1
+        for j in range(i + 1, len(clusters)):
+            distance = cluster.get_closest_distance(clusters[j].representatives)
 
-                if block_size * block_idx <= i < block_size * (block_idx + 1):
-                    block.append([float(value) for value in raw_row[:dim]])
+        # merge clusters only if they're "close enough"
+        # close enough is defined as "within at least one of the radii * scalar"
+        if distance < _MERGE_THRESHOLD \
+            * min(cluster.radius, clusters[closest_cluster].radius):
+            # the later cluster will get assigned the earlier index
+            clusters[closest_cluster].index = cluster.index
 
-        block_clusters = [Cluster([point]) for point in block]
-        clusters.extend(block_clusters)
+    input_handler = open(in_path, 'r')
+    output_handler = open(out_path, 'w', newline='')
+    reader = csv.reader(input_handler)
+    writer = csv.writer(output_handler)
 
-        print(f'Processed Block {block_idx}: {len(block)} points')
+    def read_batch():
+        batch = []
+        for _ in range(block_size):
+            try:
+                batch.append(read_single_point(next(reader), dim))
+            except StopIteration:
+                break
+        return batch
+    
+    # 3. assign clusters to all points (since there is no reason to expand the clusters, this will suffice)
+    points_clustered = 0
+    while points_clustered < n:
+        batch = read_batch()
+        if not batch:
+            break
 
-    # Step 2: Perform hierarchical clustering
-    if k is not None and k < len(clusters):
-        clusters = hierarchical_clustering(clusters, k)
+        # for each point in the batch
+        for point in batch:
+            # find cluster with closest representative
+            distances = {
+                c.index:c.get_closest_distance([point,])
+                for c in clusters
+            }
+            index = min(distances, key=distances.get)
+            # and write the point assignment to output
+            writer.writerow([*point, index])
 
-    return clusters
-
-
-def cure_cluster(dim: int, k: int, n: int, block_size: int, in_path: str, out_path: str):
-    if k is not None:
-        clusters = cure_cluster_k(dim, k, n, block_size, in_path)
-    else:
-        return
-
-    # Step 3: Save final clusters with cluster IDs
-    with open(out_path, 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Cluster_ID"] + [f"Dim_{i}" for i in range(dim)])  # Header
-
-        for cluster_id, cluster in enumerate(clusters):
-            for point in cluster.points:
-                writer.writerow([cluster_id] + point)  # Add cluster ID to each point
-
-    print(f'Final clusters saved to {out_path}')
-
-
-def hierarchical_clustering(clusters: list[Cluster], k: int) -> list[Cluster]:
-    """Performs hierarchical clustering until only k clusters remain."""
-    while len(clusters) > k:
-        min_dist = float('inf')
-        merge_idx = (-1, -1)
-
-        for i in range(len(clusters)):
-            for j in range(i + 1, len(clusters)):
-                dist = clusters[i].distance(clusters[j])
-                if dist < min_dist:
-                    min_dist = dist
-                    merge_idx = (i, j)
-
-        i, j = merge_idx
-        merged_cluster = Cluster(clusters[i].points + clusters[j].points)
-        clusters.pop(j)
-        clusters.pop(i)
-        clusters.append(merged_cluster)
-
-    return clusters
+    input_handler.close()
+    output_handler.close()
 
 
 if __name__ == '__main__':
-    from utils import generate_2d_data, plot_clusters
+    import plot_util, large_data, comparison
 
-    generate_2d_data(k=3, points_per_cluster=50, cluster_std=1.5)
-    cure_cluster(dim=2, k=3, n=150, block_size=50, in_path='points.csv', out_path='out.csv')
-    plot_clusters('points_ground_truth.csv')
-    plot_clusters('out.csv')
+    large_data.generate_data(2, 5, 1000, './data/test_points.csv', None, None)
+    cure_cluster(
+        2, 5, 1000, 100, 
+        './data/test_points.csv',
+        './data/results/test_points_cure.csv'
+    )
+    plot_util.plot_from_storage_2d('./data/test_points.csv')
+    plot_util.plot_from_storage_2d('./data/results/test_points_cure.csv')
+
+    actual_clusters = comparison.construct_clustering('./data/test_points.csv')
+    predicted_clusters = comparison.construct_clustering('./data/results/test_points_cure.csv')
+    acc = comparison.compare_clusterings(actual_clusters, predicted_clusters)
+    print(f'{acc=}')
