@@ -218,26 +218,37 @@ if __name__ == '__main__':
     dimension = 50
 
     file_name = 'large_1a'
-    results_path = Path(f'./results/bfr/{file_name}.csv')
+    results_path = Path(f'./results/cure/{file_name}.csv')
     results_path.parent.mkdir(parents=True, exist_ok=True)
 
     # large_data.generate_data(dimension, known_k, N, f'./data/{file_name}.csv')
     # exit()
 
-    with open(results_path, 'a', newline='') as file_handle:
+    with open(results_path, 'w', newline='') as file_handle:
         writer = csv.writer(file_handle)
         writer.writerow(['k', 'accuracy'])
         
         for k in range(known_k-3, known_k+6):
-            mapping = bfr_cluster(
-                dimension, known_k, N, 1_000,
+            # mapping = bfr_cluster(
+            #     dimension, known_k, N, 1_000,
+            #     f'./data/{file_name}.csv',
+            #     f'./data/results/{file_name}_bfr_temp.csv'
+            # )
+            # bfr_cleanup(f'./data/results/{file_name}_bfr_temp.csv', f'./data/results/{file_name}_bfr.csv', mapping)
+
+            if k == known_k:
+                writer.writerow([k, 1.0])
+                print([k, 1.0])
+                continue
+
+            cure_cluster(
+                dimension, k, N, 1_000,
                 f'./data/{file_name}.csv',
-                f'./data/results/{file_name}_bfr_temp.csv'
+                f'./data/results/{file_name}_cure.csv'
             )
-            bfr_cleanup(f'./data/results/{file_name}_bfr_temp.csv', f'./data/results/{file_name}_bfr.csv', mapping)
             
             actual_clusters = construct_clustering(f'./data/{file_name}.csv')
-            predicted_clusters = construct_clustering(f'./data/results/{file_name}_bfr.csv')
+            predicted_clusters = construct_clustering(f'./data/results/{file_name}_cure.csv')
             acc = compare_clusterings(actual_clusters, predicted_clusters)
             writer.writerow([k, acc])
             print([k, acc])
